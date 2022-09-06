@@ -31,6 +31,7 @@ jobs:
       id: plan
       run: terraform plan -out workspace.plan
 
+    - name: PR commenter
     - uses: actions/github-script@v5
       with:
       github-token: ${{secrets.GITHUB_TOKEN}}

@@ -58,10 +58,9 @@ jobs:
       run: tflint -f compact
 
     - name: tfsec
-      uses: aquasecurity/tfsec-pr-commenter-action@v1.2.0
-      with:
-        tfsec_args: --soft-fail
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: true
 
     - name: Render terraform docs and push changes back to PR
       uses: terraform-docs/gh-actions@main

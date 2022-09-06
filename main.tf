@@ -3,7 +3,6 @@ resource "aws_instance" "cluster" {
 
   # ...
 }
-
 # The primary use-case for the null resource is as a do-nothing container for
 # arbitrary actions taken by a provisioner.
 #

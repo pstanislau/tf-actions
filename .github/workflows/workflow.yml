@@ -5,21 +5,86 @@ on:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TF_IN_AUTOMATION: true
     steps:
     - uses: actions/checkout@v3
       with:
         ref: ${{ github.event.pull_request.head.ref }}
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        terraform_version: 0.15.0
 
-    - name: Render terraform docs and push changes back to PR
+    - name: Terraform Init
+      id: init
+      run: terraform init
+
+    - name: Post Init
+      if: always() && github.ref != 'refs/heads/master' && (steps.init.outcome == 'success' || steps.init.outcome == 'failure')
+      uses: robburger/terraform-pr-commenter@v1
+      with:
+        commenter_type: init
+        commenter_input: ${{ format('{0}{1}', steps.init.outputs.stdout, steps.init.outputs.stderr) }}
+        commenter_exitcode: ${{ steps.init.outputs.exitcode }}
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+
+    - name: Post Validate
+      if: always() && github.ref != 'refs/heads/master' && (steps.validate.outcome == 'success' || steps.validate.outcome == 'failure')
+      uses: robburger/terraform-pr-commenter@v1
+      with:
+        commenter_type: validate
+        commenter_input: ${{ format('{0}{1}', steps.validate.outputs.stdout, steps.validate.outputs.stderr) }}
+        commenter_exitcode: ${{ steps.validate.outputs.exitcode }}
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -out workspace.plan
+
+    - name: Post Plan
+      if: always() && github.ref != 'refs/heads/master' && (steps.plan.outcome == 'success' || steps.plan.outcome == 'failure')
+      uses: robburger/terraform-pr-commenter@v1
+      with:
+        commenter_type: plan
+        commenter_input: ${{ format('{0}{1}', steps.plan.outputs.stdout, steps.plan.outputs.stderr) }}
+        commenter_exitcode: ${{ steps.plan.outputs.exitcode }} 
+        
+    - uses: actions/cache@v2
+      name: Cache plugin dir
+      with:
+        path: ~/.tflint.d/plugins
+        key: ${{ matrix.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+
+    - uses: terraform-linters/setup-tflint@v2
+      name: Setup TFLint
+      with:
+        tflint_version: v0.38.1
+
+    - name: Show version
+      run: tflint --version
+
+    - name: Init TFLint
+      run: tflint --init
+
+    - name: Run TFLint
+      run: tflint -f compact
+
+    - name: tfsec
+      uses: aquasecurity/tfsec-pr-commenter-action@v1.2.0
+      with:
+        tfsec_args: --soft-fail
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+     - name: Render terraform docs and push changes back to PR
       uses: terraform-docs/gh-actions@main
       with:
         working-dir: .
         output-file: README.md
         output-method: inject
         git-push: "true"
-
-    - name: tfsec
-      uses: aquasecurity/tfsec-pr-commenter-action@v1.2.0
-      with:
-        tfsec_args: --soft-fail
-        github_token: ${{ github.token }}

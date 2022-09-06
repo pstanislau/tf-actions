@@ -1,9 +1,11 @@
 name: Terraform checks
-on:
-  - pull_request
-
+on:  
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 jobs:
-  docs:
+  tf_checks:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
